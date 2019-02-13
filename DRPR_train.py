@@ -10,17 +10,22 @@ import torchvision
 from torch.autograd import Variable
 import sklearn.manifold
 import numpy
+from shutil import copyfile
 
-dataset = "stl10"
+### Choose the dataset: "stl10", "mnist", "cifar10" or "cifar100"
+
+#dataset = "stl10"
 #dataset = "mnist"
-#dataset = "cifar100"
+dataset = "cifar100"
 
 temperature = 5
 if dataset == "cifar100":
     temperature = 4
 
-
 save_to_file = True
+save_cluster_responsibilities = False
+
+# loading target soft probabilities
 
 numpyy = numpy.load('%s/proba_data_%d.npy' % (dataset, temperature))
 yq = torch.from_numpy(numpyy)
@@ -59,7 +64,7 @@ def frobenius_distance(y_target, y_pred):
     return torch.pow((y_target - y_pred),2).sum()
 
 
-
+# choice between learning 2d or 3d representations
 bool3d = False
 output_dim = 2
 if bool3d:
@@ -107,11 +112,14 @@ class ClusterEmbedding(nn.Module):
         z = self.forward()
         return softmax_class(z, self.mu(), weights=self.pi())
         
-        
+
+# random initialization of low-dimensional representations
 
 embedding = ClusterEmbedding(yq)
 
 optimizer = optim.RMSprop(embedding.parameters(), lr=0.001, alpha=0.99, eps=1e-06, weight_decay=0, momentum=0, centered=False)
+
+# training
 
 n_step = 8000
 for iteration in range(n_step):
@@ -123,6 +131,10 @@ for iteration in range(n_step):
     loss.backward()
     optimizer.step()
 
+# end of training
+
+# saving learned representations
+
 save_directory = "%s_learned_representations" % (dataset)
 save_file = True
 file_name = "%s/data_%d_%d_d.txt"% (save_directory,temperature,output_dim)
@@ -133,16 +145,20 @@ if save_file:
     u = embedding.forward()
     y = embedding.soft_matrix()
     fdata = open(file_name,"w")
-    fclustering = open("%s/softmatrix_%d_d.txt"% (save_directory,output_dim),"w")
+    if save_cluster_responsibilities:
+        fclustering = open("%s/softmatrix_%d_%d_d.txt"% (save_directory,temperature,output_dim),"w")
     for i in range(n_class):
         for j in range(output_dim):
             fdata.write("%f " % u[i][j].data.numpy().astype(float)[0])
-        for j in range(d):
-            fclustering.write("%f " % y[i][j].data.numpy().astype(float)[0])
         fdata.write("\n")
-        fclustering.write("\n")
+        if save_cluster_responsibilities:
+            for j in range(d):
+                fclustering.write("%f " % y[i][j].data.numpy().astype(float)[0])
+            fclustering.write("\n")
 
     fdata.close()
-    fclustering.close()
+    if save_cluster_responsibilities:
+        fclustering.close()
+    copyfile(src, dst)
     print("%s written" % file_name)
 
