@@ -1,5 +1,7 @@
 # Code for the visualization experiment of "Dimensionality Reduction for Representing the Knowledge of Probabilistic Models" (ICLR 2019)
 
+The code was tested on pytorch 0.3.0
+
 Run the following code to train low-dimensionality representations for the test set of CIFAR-100:
 
 ```
